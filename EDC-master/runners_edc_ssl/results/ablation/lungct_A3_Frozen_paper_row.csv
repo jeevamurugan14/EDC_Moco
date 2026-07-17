@@ -1,0 +1,2 @@
+Dataset,Variant,AUROC,AP,Accuracy,Precision,Recall,F1-score
+LUNGCT,A3_Frozen,0.9343,0.9834,0.9723,0.9800,0.9893,0.9846

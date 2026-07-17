@@ -1,0 +1,2 @@
+Variant,Dataset,Seeds,AUROC_mean,AUROC_std,AP_mean,AP_std,Accuracy_mean,Accuracy_std,Precision_mean,Precision_std,Recall_mean,Recall_std,F1_mean,F1_std,Specificity_mean,Specificity_std
+A4_MeanScoring,LUNGCT,"[42, 123, 456]",0.9938,0.0020,0.9993,0.0003,0.9791,0.0029,0.9772,0.0031,1.0000,0.0000,0.9885,0.0016,0.7944,0.0283

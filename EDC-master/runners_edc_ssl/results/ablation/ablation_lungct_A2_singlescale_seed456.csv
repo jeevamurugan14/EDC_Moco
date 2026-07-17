@@ -1,0 +1,2 @@
+Variant,Dataset,Seed,AUROC,AP,Accuracy,Precision,Recall,F1,Specificity
+A2_SingleScale,LUNGCT,456,0.8782,0.9701,0.9219,0.9782,0.9338,0.9555,0.8167

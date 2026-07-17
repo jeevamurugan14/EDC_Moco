@@ -1,0 +1,2 @@
+Variant,Dataset,Seed,AUROC,AP,Accuracy,Precision,Recall,F1,Specificity
+A1_ImageNet,APTOS,123,0.9542,0.9789,0.8749,0.9715,0.8454,0.9041,0.9429

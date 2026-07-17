@@ -1,0 +1,2 @@
+Dataset,Variant,AUROC,AP,Accuracy,Precision,Recall,F1-score
+LUNGCT,A2_SingleScale,0.9097,0.9813,0.9089,0.9805,0.9168,0.9474

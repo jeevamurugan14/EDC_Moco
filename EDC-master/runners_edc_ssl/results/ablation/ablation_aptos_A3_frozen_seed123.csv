@@ -1,0 +1,2 @@
+Variant,Dataset,Seed,AUROC,AP,Accuracy,Precision,Recall,F1,Specificity
+A3_Frozen,APTOS,123,0.8102,0.9061,0.6119,0.9319,0.4787,0.6325,0.9193

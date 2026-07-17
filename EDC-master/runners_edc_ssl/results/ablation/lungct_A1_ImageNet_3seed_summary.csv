@@ -1,0 +1,2 @@
+Variant,Dataset,Seeds,AUROC_mean,AUROC_std,AP_mean,AP_std,Accuracy_mean,Accuracy_std,Precision_mean,Precision_std,Recall_mean,Recall_std,F1_mean,F1_std,Specificity_mean,Specificity_std
+A1_ImageNet,LUNGCT,"[42, 123, 456]",0.9004,0.0122,0.9629,0.0025,0.9802,0.0008,0.9784,0.0009,1.0000,0.0000,0.9891,0.0004,0.8056,0.0079

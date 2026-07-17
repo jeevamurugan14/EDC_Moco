@@ -1,0 +1,2 @@
+Variant,Dataset,Seeds,AUROC_mean,AUROC_std,AP_mean,AP_std,Accuracy_mean,Accuracy_std,Precision_mean,Precision_std,Recall_mean,Recall_std,F1_mean,F1_std,Specificity_mean,Specificity_std
+A3_Frozen,APTOS,"[42, 123, 456]",0.8059,0.0073,0.9018,0.0068,0.5738,0.0412,0.9340,0.0041,0.4184,0.0629,0.5751,0.0620,0.9321,0.0097

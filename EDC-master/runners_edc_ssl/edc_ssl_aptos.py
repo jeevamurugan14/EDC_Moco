@@ -1,74 +1,70 @@
-# runners_edc_ssl/edc_ssl_aptos.py
-"""
-SSL-EDC runner for APTOS dataset.
-Identical to runners_edc/edc_aptos.py EXCEPT:
-  - imports MoCo_R50_R50 instead of R50_R50
-  - adds --moco_weights_path argument
-  - adds --freeze_encoder argument
-  - save_name defaults to 'edc_ssl_aptos'
-"""
-
 import os
 import logging
 import random
+from collections import Counter
 
 import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
 import torch.backends.cudnn as cudnn
+from sklearn.metrics import confusion_matrix, classification_report
+
 from utils import get_logger, count_parameters, over_write_args_from_file
 from train_utils import TBLog, get_optimizer_v2, get_multistep_schedule_with_warmup
 from methods.edc1 import EDC
-import shutil
-from sklearn.metrics import confusion_matrix, classification_report
-
-from datasets.dataset import AD_Dataset
+from datasets.dataset import AD_Dataset_WithVal
 from datasets.data_utils import get_data_loader
-from models.edc_ssl import MoCo_R50_R50          # ← SSL model
-import warnings
+from models.edc_ssl import MoCo_R50_R50
 from configs.config_aptos import DATASET_DIR
-from collections import Counter
 
+import warnings
 warnings.filterwarnings("ignore")
 
 
-def get_label(sample):
-    if isinstance(sample, tuple) and len(sample) >= 2:
-        label = sample[1]
-    else:
-        label = sample[-1]
-    if isinstance(label, (np.ndarray, list)) and len(label) > 1:
-        label = np.argmax(label)
-    return int(label)
+def str2bool(v):
+    if isinstance(v, bool): return v
+    if v.lower() in ("yes","true","t","y","1"): return True
+    if v.lower() in ("no","false","f","n","0"): return False
+    raise ValueError("Boolean value expected.")
 
 
-def main_worker(gpu, args):
-    args.gpu = gpu
-    assert args.seed is not None
-    random.seed(args.seed)
-    torch.manual_seed(args.seed)
-    np.random.seed(args.seed)
+def run_single_seed(args, seed):
+    args.seed = seed
+    random.seed(seed)
+    torch.manual_seed(seed)
+    np.random.seed(seed)
     cudnn.deterministic = True
 
-    save_path = os.path.join(args.save_dir, args.save_name)
-    logger = get_logger(args.save_name, save_path, "INFO")
-    logger.warning(f"USE GPU: {args.gpu} for training")
+    save_name = f"{args.save_name}_seed{seed}"
+    save_path = os.path.join(args.save_dir, save_name)
+    os.makedirs(save_path, exist_ok=True)
 
-    # ── Dataset & loaders ────────────────────────────────────────────────────
-    train_dset = AD_Dataset(name=args.dataset, train=True,  data_dir=args.data_dir).get_dset()
-    eval_dset  = AD_Dataset(name=args.dataset, train=False, data_dir=args.data_dir).get_dset()
+    logger = get_logger(save_name, save_path, "INFO")
+    logger.warning(f"[APTOS] Seed={seed}  GPU={args.gpu}")
 
-    train_labels = np.array(train_dset.targets)
-    eval_labels  = np.array(eval_dset.targets)
-    train_counts = Counter(train_labels)
-    eval_counts  = Counter(eval_labels)
+    ds_train = AD_Dataset_WithVal(
+        name=args.dataset, data_dir=args.data_dir,
+        img_size=args.img_size, crop_size=args.img_size,
+        val_fraction=0.2, seed=seed, train=True,
+    )
+    train_dset = ds_train.get_train_dset()
+    val_dset   = ds_train.get_val_dset()
 
-    print(f"TrainSet: {len(train_dset)}  |  Normal: {train_counts[0]}  Abnormal: {train_counts.get(1,0)}")
-    print(f"EvalSet : {len(eval_dset)}   |  Normal: {eval_counts[0]}   Abnormal: {eval_counts.get(1,0)}")
+    eval_dset = AD_Dataset_WithVal(
+        name=args.dataset, data_dir=args.data_dir,
+        img_size=args.img_size, train=False,
+    ).get_eval_dset()
 
-    generator_lb = torch.Generator()
-    generator_lb.manual_seed(args.seed)
+    tl = np.array(train_dset.targets)
+    el = np.array(eval_dset.targets)
+    print(f"Train normal : {Counter(tl)[0]}")
+    print(f"Val normal   : {len(val_dset)}")
+    print(f"Test normal  : {Counter(el)[0]}  Abnormal: {Counter(el)[1]}")
+    print(f"Imbalance    : {Counter(el)[1]/Counter(el)[0]:.2f}:1")
+
+    generator = torch.Generator()
+    generator.manual_seed(seed)
 
     loader_dict = {}
     loader_dict["train"] = get_data_loader(
@@ -76,16 +72,17 @@ def main_worker(gpu, args):
         data_sampler=args.train_sampler,
         num_iters=args.num_train_iter,
         num_workers=args.num_workers,
-        distributed=False,
-        generator=generator_lb,
+        distributed=False, generator=generator,
+    )
+    loader_dict["val"] = get_data_loader(
+        val_dset, args.eval_batch_size,
+        num_workers=args.num_workers, drop_last=False,
     )
     loader_dict["eval"] = get_data_loader(
         eval_dset, args.eval_batch_size,
-        num_workers=args.num_workers,
-        drop_last=False,
+        num_workers=args.num_workers, drop_last=False,
     )
 
-    # ── Model (SSL encoder + warmup) ──────────────────────────────────────────
     model = MoCo_R50_R50(
         moco_weights_path=args.moco_weights_path,
         img_size=args.img_size,
@@ -96,7 +93,6 @@ def main_worker(gpu, args):
         freeze_encoder=args.freeze_encoder,
         warmup_iters=args.warmup_iters,
     )
-
     for m in model.modules():
         if isinstance(m, nn.BatchNorm2d):
             m.momentum = 0.01
@@ -104,128 +100,135 @@ def main_worker(gpu, args):
     runner = EDC(model=model, num_eval_iter=args.num_eval_iter, logger=logger)
     logger.info(f"Trainable params: {count_parameters(runner.model):,}")
 
-    # ── Optimiser (encoder gets lower lr) ─────────────────────────────────────
     optimizer = get_optimizer_v2(
         runner.model, args.optim, args.lr, args.momentum,
         lr_encoder=args.lr_encoder, weight_decay=args.weight_decay,
     )
     scheduler = get_multistep_schedule_with_warmup(
-        optimizer, milestones=[1e10], gamma=0.2, num_warmup_steps=0
+        optimizer, milestones=[1e10], gamma=0.2, num_warmup_steps=0,
     )
     runner.set_optimizer(optimizer, scheduler)
 
-    # ── Device ────────────────────────────────────────────────────────────────
-    if torch.cuda.is_available():
-        device = torch.device(f"cuda:{args.gpu}" if args.gpu is not None else "cuda")
-        logger.info(f"Using CUDA GPU: {torch.cuda.get_device_name(0)}")
-    else:
-        device = torch.device("cpu")
-        logger.info("Using CPU")
-
+    device = torch.device(f"cuda:{args.gpu}" if torch.cuda.is_available() else "cpu")
+    logger.info(f"Device: {device}")
     runner.model = runner.model.to(device)
     args.device  = device
 
-    logger.info(f"Arguments: {args}")
     runner.set_data_loader(loader_dict)
 
     if args.resume:
         runner.load_model(args.load_path)
 
-    # ── Train ─────────────────────────────────────────────────────────────────
-    runner.tb_log = TBLog(save_path, "tb", use_tensorboard=args.use_tensorboard)
-    eval_dict = runner.train(args, device=device, logger=logger)
-    logging.warning("Training and Evaluation COMPLETED!")
+    args.save_name = save_name
+    runner.tb_log  = TBLog(save_path, "tb", use_tensorboard=args.use_tensorboard)
+    runner.train(args, device=device, logger=logger)
 
-    # ── Final metrics summary ─────────────────────────────────────────────────
-    metrics_table = pd.DataFrame({
-        "Metric": ["AUC", "F1-score", "Accuracy", "Recall (Sensitivity)", "Specificity"],
-        "Value":  [eval_dict["eval/AUC"], eval_dict["eval/f1"], eval_dict["eval/acc"],
-                   eval_dict["eval/recall"], eval_dict["eval/specificity"]],
+    final = runner.evaluate(
+        args=args, device=device,
+        val_loader=loader_dict["val"],
+    )
+
+    y_true  = np.array(final["eval/y_true"])
+    y_score = np.array(final["eval/y_score"])
+    thresh  = final["eval/best_thr"]
+    y_pred  = (y_score >= thresh).astype(int)
+
+    print(f"\n{'='*60}")
+    print(f"  APTOS - Seed {seed} - Final Results")
+    print(f"{'='*60}")
+    metrics_df = pd.DataFrame({
+        "Metric": ["AUROC","Avg Precision","Accuracy",
+                   "Precision","Recall","F1-score","Specificity"],
+        "Value":  [final["eval/AUC"], final["eval/AP"], final["eval/acc"],
+                   final["eval/precision"], final["eval/recall"],
+                   final["eval/f1"], final["eval/specificity"]],
     })
-    print("\n===== FINAL EVALUATION METRICS – SSL-EDC APTOS =====")
-    print(metrics_table.to_string(index=False, float_format="%.4f"))
+    print(metrics_df.to_string(index=False, float_format="%.4f"))
+    print(f"\n{classification_report(y_true, y_pred, target_names=['NORMAL','ABNORMAL'], digits=4)}")
 
-    y_true  = np.array(eval_dict["eval/y_true"])
-    y_score = np.array(eval_dict["eval/y_score"])
-    thr     = eval_dict["eval/best_thr"]
-    y_pred  = (y_score >= thr).astype(int)
+    # APTOS imbalance analysis
+    normal_scores   = y_score[y_true == 0]
+    abnormal_scores = y_score[y_true == 1]
+    print(f"\n===== APTOS IMBALANCE ANALYSIS =====")
+    print(f"Normal scores   - mean:{normal_scores.mean():.4f} std:{normal_scores.std():.4f}")
+    print(f"Abnormal scores - mean:{abnormal_scores.mean():.4f} std:{abnormal_scores.std():.4f}")
+    fp  = ((y_pred==1)&(y_true==0)).sum()
+    fn  = ((y_pred==0)&(y_true==1)).sum()
+    tp  = ((y_pred==1)&(y_true==1)).sum()
+    tn  = ((y_pred==0)&(y_true==0)).sum()
+    print(f"FPR: {fp/(fp+tn+1e-8):.4f}  TPR: {tp/(tp+fn+1e-8):.4f}")
+    print(f"Threshold: {thresh:.4f} (90th-pct of val-normal scores)")
 
-    cm     = confusion_matrix(y_true, y_pred)
-    cm_df  = pd.DataFrame(cm, index=["Actual NORMAL","Actual ABNORMAL"],
-                          columns=["Predicted NORMAL","Predicted ABNORMAL"])
-    print("\n===== CONFUSION MATRIX =====")
-    print(cm_df)
-    print("\n===== CLASSIFICATION REPORT =====")
-    print(classification_report(y_true, y_pred,
-                                target_names=["NORMAL","ABNORMAL"], digits=4))
-    print(f"\nBest Threshold (F1-optimized): {thr:.4f}")
+    return final
 
 
-def str2bool(v):
-    if isinstance(v, bool): return v
-    if v.lower() in ('yes','true','t','y','1'): return True
-    if v.lower() in ('no','false','f','n','0'): return False
-    raise ValueError('Boolean value expected.')
+def main_worker(gpu, args):
+    args.gpu = gpu
+    seeds = args.seeds if (hasattr(args,"seeds") and args.seeds) else [args.seed]
+    all_results = []
+    for seed in seeds:
+        result = run_single_seed(args, seed)
+        all_results.append(result)
+
+    if len(all_results) > 1:
+        keys = ["eval/AUC","eval/AP","eval/acc","eval/f1",
+                "eval/recall","eval/precision","eval/specificity"]
+        print(f"\n{'='*60}")
+        print(f"  APTOS - Multi-Seed Summary (seeds={seeds})")
+        print(f"{'='*60}")
+        for k in keys:
+            vals = [r[k] for r in all_results]
+            print(f"  {k:30s}: {np.mean(vals):.4f} +/- {np.std(vals):.4f}")
+        print(f"{'='*60}")
 
 
 if __name__ == "__main__":
     import argparse
+    parser = argparse.ArgumentParser(description="SSL-EDC APTOS Revised")
 
-    parser = argparse.ArgumentParser(description='SSL-EDC APTOS')
-
-    # Saving
-    parser.add_argument('--save_dir',  type=str, default='./saved_models')
-    parser.add_argument('--save_name', type=str, default='edc_ssl_aptos')
-    parser.add_argument('--resume',    action='store_true', default=False)
-    parser.add_argument('--load_path', type=str, default=None)
-    parser.add_argument('-o','--overwrite', action='store_true', default=True)
-    parser.add_argument('--use_tensorboard', action='store_true', default=True)
-
-    # Training
-    parser.add_argument('--epoch',           type=int, default=1)
-    parser.add_argument('--num_train_iter',  type=int, default=1000)
-    parser.add_argument('--num_eval_iter',   type=int, default=250)
-    parser.add_argument('--batch_size',      type=int, default=32)
-    parser.add_argument('--eval_batch_size', type=int, default=64)
-
-    # Optimiser
-    parser.add_argument('--optim',        type=str,   default='AdamW')
-    parser.add_argument('--lr',           type=float, default=5e-4)
-    parser.add_argument('--lr_encoder',   type=float, default=1e-5,
-                        help='Lower lr for the SSL-pretrained encoder (fine-tune)')
-    parser.add_argument('--momentum',     type=float, default=0.9)
-    parser.add_argument('--weight_decay', type=float, default=1e-4)
-    parser.add_argument('--amp',  type=str2bool, default=False)
-    parser.add_argument('--clip', type=float,    default=1)
-
-    # Data
-    parser.add_argument('--data_dir',      type=str, default=DATASET_DIR)
-    parser.add_argument('--dataset',       type=str, default='aptos')
-    parser.add_argument('--train_sampler', type=str, default='RandomSampler')
-    parser.add_argument('--img_size',      type=int, default=256)
-    parser.add_argument('--num_workers',   type=int, default=4)
-
-    parser.add_argument('--moco_weights_path', type=str, required=True,
-                        help='Path to MoCo pretrained .pth file')
-    parser.add_argument('--freeze_encoder', type=str2bool, default=False,
-                        help='True = SSL-Frozen (linear probe), False = SSL-Finetune')
-    parser.add_argument('--warmup_iters', type=int, default=200,
-                        help='Iterations to keep encoder frozen at start of fine-tuning. '
-                             'Ignored when freeze_encoder=True.')
-
-    parser.add_argument('--seed', default=42, type=int)
-    parser.add_argument('--gpu',  default='0', type=str)
-    parser.add_argument('--c',    type=str, default='')
+    parser.add_argument("--save_dir",          type=str, default="./saved_models")
+    parser.add_argument("--save_name",         type=str, default="edc_ssl_aptos_revised")
+    parser.add_argument("--resume",            action="store_true", default=False)
+    parser.add_argument("--load_path",         type=str, default=None)
+    parser.add_argument("-o","--overwrite",    action="store_true", default=True)
+    parser.add_argument("--use_tensorboard",   action="store_true", default=True)
+    parser.add_argument("--epoch",             type=int,   default=1)
+    parser.add_argument("--num_train_iter",    type=int,   default=1000)
+    parser.add_argument("--num_eval_iter",     type=int,   default=250)
+    parser.add_argument("--batch_size",        type=int,   default=32)
+    parser.add_argument("--eval_batch_size",   type=int,   default=64)
+    parser.add_argument("--optim",             type=str,   default="AdamW")
+    parser.add_argument("--lr",                type=float, default=5e-4)
+    parser.add_argument("--lr_encoder",        type=float, default=1e-5)
+    parser.add_argument("--momentum",          type=float, default=0.9)
+    parser.add_argument("--weight_decay",      type=float, default=1e-4)
+    parser.add_argument("--amp",               type=str2bool, default=False)
+    parser.add_argument("--clip",              type=float, default=1.0)
+    parser.add_argument("--data_dir",          type=str, default=DATASET_DIR)
+    parser.add_argument("--dataset",           type=str, default="aptos")
+    parser.add_argument("--train_sampler",     type=str, default="RandomSampler")
+    parser.add_argument("--img_size",          type=int, default=256)
+    parser.add_argument("--num_workers",       type=int, default=4)
+    parser.add_argument("--moco_weights_path", type=str, required=True)
+    parser.add_argument("--freeze_encoder",    type=str2bool, default=False)
+    parser.add_argument("--warmup_iters",      type=int, default=200)
+    parser.add_argument("--seed",              type=int, default=42)
+    parser.add_argument("--seeds",             type=int, nargs="+", default=None)
+    parser.add_argument("--gpu",               type=str, default="0")
+    parser.add_argument("--c",                 type=str, default="")
 
     args = parser.parse_args()
     over_write_args_from_file(args, args.c)
 
-    save_path = os.path.join(args.save_dir, args.save_name)
-    if os.path.exists(save_path) and args.overwrite and not args.resume:
-        shutil.rmtree(save_path)
-    if os.path.exists(save_path) and not args.overwrite:
-        raise Exception(f'Model already exists: {save_path}')
-    if args.resume and args.load_path is None:
-        raise Exception('--load_path required when --resume is set')
+    seeds = args.seeds if (hasattr(args, 'seeds') and args.seeds) else [args.seed]
+    for seed in seeds:
+        args.seed = seed
+        args.save_name = f'edc_ssl_aptos_seed{seed}'
+        save_path = os.path.join(args.save_dir, args.save_name)
+        if os.path.exists(save_path) and args.overwrite and not args.resume:
+            shutil.rmtree(save_path)
+        print(f'\n=== Running APTOS seed {seed} ===')
+        main_worker(int(args.gpu), args)
 
-    main_worker(int(args.gpu), args)
+    if len(seeds) > 1:
+        print(f'\nMulti-seed APTOS completed for seeds: {seeds}')

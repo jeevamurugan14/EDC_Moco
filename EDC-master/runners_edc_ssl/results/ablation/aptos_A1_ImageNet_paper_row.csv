@@ -1,0 +1,2 @@
+Dataset,Variant,AUROC,AP,Accuracy,Precision,Recall,F1-score
+APTOS,A1_ImageNet,0.9536,0.9784,0.8659,0.9711,0.8327,0.8964
