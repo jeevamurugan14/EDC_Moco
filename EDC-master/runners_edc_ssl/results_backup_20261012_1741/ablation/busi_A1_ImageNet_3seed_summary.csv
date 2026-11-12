@@ -1,0 +1,2 @@
+Variant,Dataset,Seeds,AUROC_mean,AUROC_std,AP_mean,AP_std,Accuracy_mean,Accuracy_std,Precision_mean,Precision_std,Recall_mean,Recall_std,F1_mean,F1_std,Specificity_mean,Specificity_std
+A1_ImageNet,BUSI,"[42, 123, 456]",0.7123,0.0174,0.9498,0.0032,0.4177,0.0783,0.9603,0.0227,0.3603,0.1026,0.5146,0.0996,0.8642,0.1145

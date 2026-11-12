@@ -1,0 +1,2 @@
+Variant,Dataset,Seed,AUROC,AP,Accuracy,Precision,Recall,F1,Specificity
+A1_ImageNet,BUSI,42,0.7309,0.9513,0.3502,0.9667,0.2762,0.4296,0.9259

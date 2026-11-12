@@ -1,0 +1,2 @@
+Baseline,Dataset,Seed,AUROC,AP,Accuracy,Precision,Recall,F1,Specificity
+Autoencoder,APTOS,123,0.7914,0.8779,0.4602,0.9449,0.2402,0.3830,0.9677

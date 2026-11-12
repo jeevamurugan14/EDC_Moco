@@ -1,0 +1,2 @@
+Variant,Dataset,Seed,AUROC,AP,Accuracy,Precision,Recall,F1,Specificity
+A1_ImageNet,LUNGCT,123,0.8951,0.9620,0.9796,0.9778,1.0000,0.9888,0.8000

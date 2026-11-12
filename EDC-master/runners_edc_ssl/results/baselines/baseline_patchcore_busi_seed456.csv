@@ -1,0 +1,2 @@
+Baseline,Dataset,Seed,AUROC,AP,Accuracy,Precision,Recall,F1,Specificity
+PatchCore,BUSI,456,0.8649,0.9935,0.7493,0.9878,0.7481,0.8514,0.7778

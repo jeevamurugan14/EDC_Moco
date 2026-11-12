@@ -1,0 +1,2 @@
+Baseline,Dataset,Seed,AUROC,AP,Accuracy,Precision,Recall,F1,Specificity
+DRAEM,LungCT,42,0.8710,0.9590,0.3667,0.9756,0.3025,0.4618,0.9333

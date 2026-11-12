@@ -1,7 +1,6 @@
 import os
 import logging
 import random
-import shutil
 from collections import Counter
 
 import numpy as np
@@ -13,8 +12,8 @@ from sklearn.metrics import confusion_matrix, classification_report
 
 from utils import get_logger, count_parameters, over_write_args_from_file
 from train_utils import TBLog, get_optimizer_v2, get_multistep_schedule_with_warmup
-from methods.edc1 import EDC
-from datasets.dataset import AD_Dataset_WithVal
+from methods.edc_revised import EDC
+from datasets.dataset_with_val import AD_Dataset_WithVal
 from datasets.data_utils import get_data_loader
 from models.edc_ssl import MoCo_R50_R50
 from configs.config_lungct import DATASET_DIR

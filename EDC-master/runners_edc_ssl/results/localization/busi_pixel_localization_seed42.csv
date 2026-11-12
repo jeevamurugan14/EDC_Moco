@@ -1,0 +1,2 @@
+Dataset,Seed,N_lesions,Mean_Dice,Std_Dice,Mean_IoU,Std_IoU,Image_AUROC,Image_AP
+BUSI,42,647,0.2360,0.1651,0.1446,0.1164,0.6710,0.9721

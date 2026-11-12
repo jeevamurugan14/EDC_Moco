@@ -1,0 +1,2 @@
+Variant,Dataset,Seed,AUROC,AP,Accuracy,Precision,Recall,F1,Specificity
+A4_MeanScoring,APTOS,456,0.7572,0.8785,0.5379,0.9372,0.3619,0.5221,0.9441

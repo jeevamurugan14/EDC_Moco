@@ -1,0 +1,2 @@
+Dataset,Variant,AUROC,AP,Accuracy,Precision,Recall,F1-score
+APTOS,A3_Frozen,0.8059,0.9018,0.5738,0.9340,0.4184,0.5751

@@ -1,0 +1,2 @@
+Dataset,Variant,AUROC,AP,Accuracy,Precision,Recall,F1-score
+BUSI,A1_ImageNet,0.7981,0.9890,0.4303,0.9953,0.4086,0.5782

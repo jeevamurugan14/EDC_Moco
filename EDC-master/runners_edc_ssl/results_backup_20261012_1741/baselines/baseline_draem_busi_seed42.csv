@@ -1,0 +1,2 @@
+Baseline,Dataset,Seed,AUROC,AP,Accuracy,Precision,Recall,F1,Specificity
+DRAEM,BUSI,42,0.6797,0.9817,0.6187,0.9710,0.6213,0.7578,0.5556

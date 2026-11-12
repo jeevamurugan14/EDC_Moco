@@ -1,0 +1,2 @@
+Baseline,Dataset,Seed,AUROC,AP,Accuracy,Precision,Recall,F1,Specificity
+RD4AD,APTOS,42,0.4915,0.6613,0.3114,0.5769,0.0485,0.0894,0.9180

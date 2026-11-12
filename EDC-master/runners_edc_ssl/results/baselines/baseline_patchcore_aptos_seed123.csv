@@ -1,0 +1,2 @@
+Baseline,Dataset,Seed,AUROC,AP,Accuracy,Precision,Recall,F1,Specificity
+PatchCore,APTOS,123,0.8126,0.8877,0.4756,0.9245,0.2703,0.4183,0.9491

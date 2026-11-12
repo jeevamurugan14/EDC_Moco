@@ -1,0 +1,86 @@
+[2026-10-12 17:41:20] === overnight start, output folder: overnight_20261012_1741 ===
+name, memory.used [MiB], memory.total [MiB]
+NVIDIA A100-PCIE-40GB, 19860 MiB, 40536 MiB
+Quadro P2000, 18 MiB, 5059 MiB
+[2026-10-12 17:41:20] backup: results_backup_20261012_1741
+[2026-10-12 17:41:20] backup: saved_models_backup_20261012_1741
+Patched OK
+[2026-10-12 17:41:21] patch: OK
+[2026-10-12 17:41:21] edc_ssl_busi.py uses: from methods.edc_revised import
+[2026-10-12 17:41:21] edc_ssl_busi_A1_imagenet.py uses: from methods.edc_revised import
+[2026-10-12 17:41:21] edc_ssl_busi_A2_singlescale.py uses: from methods.edc_revised import
+[2026-10-12 17:41:21] edc_ssl_busi_A3_frozen.py uses: from methods.edc_revised import
+[2026-10-12 17:41:21] START R1_proposed
+[2026-10-12 18:36:15] END   R1_proposed  (exit code 0)
+[2026-10-12 18:36:15] START R2_nowarmup
+[2026-10-12 19:35:00] END   R2_nowarmup  (exit code 0)
+[2026-10-12 19:35:00] START R3_singlescale
+[2026-10-12 20:22:15] END   R3_singlescale  (exit code 0)
+[2026-10-12 20:22:15] START R4_frozen
+[2026-10-12 21:03:17] END   R4_frozen  (exit code 0)
+[2026-10-12 21:03:17] START R5_imagenet
+[2026-10-12 21:03:20] END   R5_imagenet  (exit code 2)
+[2026-10-12 21:03:20] R5 retry without --moco_weights_path
+[2026-10-12 21:03:20] START R5_imagenet
+[2026-10-12 22:01:45] END   R5_imagenet  (exit code 0)
+
+===== R1_proposed.log =====  seeds found: ['123', '42', '456']
+benign    (mean of 3): AUC=0.6636  AP=0.9617  acc=0.3721  precision=0.9619  recall=0.3455  f1=0.4867  specificity=0.8025
+malignant (mean of 3): AUC=0.5758  AP=0.9004  acc=0.3038  precision=0.8840  recall=0.2397  f1=0.3614  specificity=0.8025
+overall summary:
+  eval/AUC                      : 0.6351 +/- 0.0372
+  eval/AP                       : 0.9712 +/- 0.0041
+  eval/acc                      : 0.3309 +/- 0.1374
+  eval/f1                       : 0.4510 +/- 0.1841
+  eval/recall                   : 0.3112 +/- 0.1459
+  eval/precision                : 0.9705 +/- 0.0092
+  eval/specificity              : 0.8025 +/- 0.0761
+
+===== R2_nowarmup.log =====  seeds found: ['123', '42', '456']
+benign    (mean of 3): AUC=0.7364  AP=0.9686  acc=0.5201  precision=0.9758  recall=0.5027  f1=0.6591  specificity=0.8025
+malignant (mean of 3): AUC=0.6440  AP=0.9163  acc=0.4121  precision=0.9330  recall=0.3619  f1=0.5177  specificity=0.8025
+overall summary:
+  eval/AUC                      : 0.7064 +/- 0.0141
+  eval/AP                       : 0.9762 +/- 0.0010
+  eval/acc                      : 0.4708 +/- 0.0782
+  eval/f1                       : 0.6194 +/- 0.0777
+  eval/recall                   : 0.4570 +/- 0.0821
+  eval/precision                : 0.9819 +/- 0.0023
+  eval/specificity              : 0.8025 +/- 0.0175
+
+===== R3_singlescale.log =====  seeds found: ['123', '42', '456']
+benign    (mean of 3): AUC=0.6392  AP=0.9595  acc=0.3613  precision=0.9564  recall=0.3356  f1=0.4857  specificity=0.7778
+malignant (mean of 3): AUC=0.5755  AP=0.9085  acc=0.3376  precision=0.8981  recall=0.2810  f1=0.4195  specificity=0.7778
+overall summary:
+  AUROC       : 0.6185 +/- 0.0239
+  AP          : 0.9709 +/- 0.0027
+  Accuracy    : 0.3363 +/- 0.1039
+  Precision   : 0.9684 +/- 0.0097
+  Recall      : 0.3179 +/- 0.1092
+  F1          : 0.4680 +/- 0.1334
+  Specificity : 0.7778 +/- 0.0302
+
+===== R4_frozen.log =====  seeds found: ['123', '42', '456']
+benign    (mean of 3): AUC=0.6705  AP=0.9639  acc=0.3477  precision=0.9733  recall=0.3158  f1=0.4670  specificity=0.8642
+malignant (mean of 3): AUC=0.5756  AP=0.9078  acc=0.2968  precision=0.9258  recall=0.2238  f1=0.3542  specificity=0.8642
+overall summary:
+  AUROC       : 0.6397 +/- 0.0190
+  AP          : 0.9731 +/- 0.0003
+  Accuracy    : 0.3091 +/- 0.0928
+  Precision   : 0.9800 +/- 0.0019
+  Recall      : 0.2859 +/- 0.0982
+  F1          : 0.4341 +/- 0.1130
+  Specificity : 0.8642 +/- 0.0349
+
+===== R5_imagenet.log =====  seeds found: ['123', '42', '456']
+benign    (mean of 3): AUC=0.8352  AP=0.9872  acc=0.4914  precision=0.9938  recall=0.4630  f1=0.6300  specificity=0.9506
+malignant (mean of 3): AUC=0.7210  AP=0.9512  acc=0.3699  precision=0.9799  recall=0.2952  f1=0.4534  specificity=0.9506
+overall summary:
+  AUROC       : 0.7981 +/- 0.0094
+  AP          : 0.9890 +/- 0.0005
+  Accuracy    : 0.4303 +/- 0.0352
+  Precision   : 0.9953 +/- 0.0034
+  Recall      : 0.4086 +/- 0.0380
+  F1          : 0.5782 +/- 0.0379
+  Specificity : 0.9506 +/- 0.0349
+[2026-10-12 22:01:45] === ALL DONE. Send me: cat overnight_20261012_1741/STATUS.txt ===

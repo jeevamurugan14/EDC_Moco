@@ -1,0 +1,2 @@
+Baseline,Dataset,Seed,AUROC,AP,Accuracy,Precision,Recall,F1,Specificity
+RD4AD,BUSI,456,0.8124,0.9882,0.1647,0.9884,0.1314,0.2319,0.9630

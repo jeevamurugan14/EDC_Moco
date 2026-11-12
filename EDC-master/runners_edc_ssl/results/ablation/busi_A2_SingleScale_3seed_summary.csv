@@ -1,0 +1,2 @@
+Variant,Dataset,Seeds,AUROC_mean,AUROC_std,AP_mean,AP_std,Accuracy_mean,Accuracy_std,Precision_mean,Precision_std,Recall_mean,Recall_std,F1_mean,F1_std,Specificity_mean,Specificity_std
+A2_SingleScale,BUSI,"[42, 123, 456]",0.6185,0.0239,0.9709,0.0027,0.3363,0.1039,0.9684,0.0097,0.3179,0.1092,0.4680,0.1334,0.7778,0.0302

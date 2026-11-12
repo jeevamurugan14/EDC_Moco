@@ -1,0 +1,2 @@
+Variant,Dataset,Seed,AUROC,AP,Accuracy,Precision,Recall,F1,Specificity
+A5_Proposed,APTOS,42,0.7820,0.8741,0.7784,0.7873,0.9348,0.8548,0.4174

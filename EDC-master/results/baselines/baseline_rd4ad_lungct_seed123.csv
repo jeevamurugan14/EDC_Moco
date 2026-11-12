@@ -1,0 +1,2 @@
+Baseline,Dataset,Seed,AUROC,AP,Accuracy,Precision,Recall,F1,Specificity
+RD4AD,LungCT,123,0.7783,0.9577,0.6146,0.9441,0.6068,0.7388,0.6833

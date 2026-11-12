@@ -1,0 +1,2 @@
+Dataset,Variant,AUROC,AP,Accuracy,Precision,Recall,F1-score
+LUNGCT,A1_ImageNet,0.9004,0.9629,0.9802,0.9784,1.0000,0.9891

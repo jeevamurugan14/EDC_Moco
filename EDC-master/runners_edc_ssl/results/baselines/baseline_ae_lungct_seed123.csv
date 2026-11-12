@@ -1,0 +1,2 @@
+Baseline,Dataset,Seed,AUROC,AP,Accuracy,Precision,Recall,F1,Specificity
+Autoencoder,LungCT,123,0.7094,0.9308,0.3311,0.9412,0.2722,0.4223,0.8500

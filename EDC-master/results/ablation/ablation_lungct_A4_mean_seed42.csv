@@ -1,0 +1,2 @@
+Variant,Dataset,Seed,AUROC,AP,Accuracy,Precision,Recall,F1,Specificity
+A4_MeanScoring,LUNGCT,42,0.9922,0.9991,0.9864,0.9851,1.0000,0.9925,0.8667

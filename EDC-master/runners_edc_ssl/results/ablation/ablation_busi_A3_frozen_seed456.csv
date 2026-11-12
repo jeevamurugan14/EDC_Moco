@@ -1,0 +1,2 @@
+Variant,Dataset,Seed,AUROC,AP,Accuracy,Precision,Recall,F1,Specificity
+A3_Frozen,BUSI,456,0.6597,0.9735,0.2596,0.9805,0.2334,0.3770,0.8889

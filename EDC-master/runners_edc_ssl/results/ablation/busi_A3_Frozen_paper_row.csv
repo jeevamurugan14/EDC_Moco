@@ -1,0 +1,2 @@
+Dataset,Variant,AUROC,AP,Accuracy,Precision,Recall,F1-score
+BUSI,A3_Frozen,0.6397,0.9731,0.3091,0.9800,0.2859,0.4341

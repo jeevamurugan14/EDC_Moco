@@ -12,8 +12,8 @@ from sklearn.metrics import confusion_matrix, classification_report
 
 from utils import get_logger, count_parameters, over_write_args_from_file
 from train_utils import TBLog, get_optimizer_v2, get_multistep_schedule_with_warmup
-from methods.edc1 import EDC
-from datasets.dataset import AD_Dataset_WithVal
+from methods.edc_revised import EDC
+from datasets.dataset_with_val import AD_Dataset_WithVal
 from datasets.data_utils import get_data_loader
 from models.edc_ssl import MoCo_R50_R50
 from configs.config_busi import DATASET_DIR
@@ -149,8 +149,7 @@ def run_single_seed(args, seed):
     return final
 
 
-def main_worker(gpu, args):
-    args.gpu = gpu
+def main_worker(args):
     seeds = args.seeds if (hasattr(args,"seeds") and args.seeds) else [args.seed]
     all_results = []
     for seed in seeds:
@@ -206,16 +205,4 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     over_write_args_from_file(args, args.c)
-
-    seeds = args.seeds if (hasattr(args, 'seeds') and args.seeds) else [args.seed]
-    for seed in seeds:
-        args.seed = seed
-        args.save_name = f'edc_ssl_busi_seed{seed}'
-        save_path = os.path.join(args.save_dir, args.save_name)
-        if os.path.exists(save_path) and args.overwrite and not args.resume:
-            shutil.rmtree(save_path)
-        print(f'\n=== Running BUSI seed {seed} ===')
-        main_worker(int(args.gpu), args)
-
-    if len(seeds) > 1:
-        print(f'\nMulti-seed BUSI completed for seeds: {seeds}')
+    main_worker(args)

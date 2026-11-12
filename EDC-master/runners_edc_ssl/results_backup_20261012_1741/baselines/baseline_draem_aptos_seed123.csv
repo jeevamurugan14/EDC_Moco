@@ -1,0 +1,2 @@
+Baseline,Dataset,Seed,AUROC,AP,Accuracy,Precision,Recall,F1,Specificity
+DRAEM,APTOS,123,0.4787,0.7039,0.3550,0.7536,0.1120,0.1950,0.9155

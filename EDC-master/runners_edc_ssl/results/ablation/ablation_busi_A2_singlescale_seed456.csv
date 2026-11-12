@@ -1,0 +1,2 @@
+Variant,Dataset,Seed,AUROC,AP,Accuracy,Precision,Recall,F1,Specificity
+A2_SingleScale,BUSI,456,0.6023,0.9676,0.1899,0.9550,0.1638,0.2797,0.8148

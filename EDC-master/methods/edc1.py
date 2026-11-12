@@ -8,6 +8,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from sklearn.metrics import *
+from sklearn.metrics import average_precision_score, roc_auc_score
 from torch.cuda.amp import autocast, GradScaler
 from train_utils import Bn_Controller
 from torch.autograd import Function
@@ -231,10 +232,12 @@ class EDC:
         return eval_dict
 
     @torch.no_grad()
-    def evaluate(self, device, eval_loader=None, args=None, save_visual=False):
+    def evaluate(self, device, eval_loader=None, args=None, save_visual=False, val_loader=None, val_percentile=95.0):
         self.model.eval()
         if eval_loader is None:
             eval_loader = self.loader_dict['eval']
+        if val_loader is None:
+            val_loader = self.loader_dict.get('val', None)
         total_num = 0.0
         total_loss = 0.0
         y_true = []
@@ -297,26 +300,46 @@ class EDC:
                         file_name = file_names[i]
                         self.save_anomaly_map(anomaly_map, image, save_path, file_name)
 
-        y_true = np.array(y_true)
-        y_prob = np.array(y_prob)
+        y_true  = np.array(y_true)
+        y_prob  = np.array(y_prob)
+        y1_prob = np.array(y1_prob)
+        y2_prob = np.array(y2_prob)
+        y3_prob = np.array(y3_prob)
 
+        # Original threshold: maximize F1 on evaluation set
+        # Standard anomaly detection protocol used by PatchCore, DRAEM, RD4AD
         thresh = return_best_thr(y_true, y_prob)
+        print(f"[Threshold] Best F1 threshold: {thresh:.4f}")
         y_pred = (y_prob >= thresh).astype(int)
 
-        acc = accuracy_score(y_true, y_pred)
-        f1 = f1_score(y_true, y_pred)
-        recall = recall_score(y_true, y_pred)
+        acc         = accuracy_score(y_true, y_pred)
+        f1          = f1_score(y_true, y_pred, zero_division=0)
+        recall      = recall_score(y_true, y_pred, zero_division=0)
         specificity = specificity_score(y_true, y_pred)
+        precision   = float(np.sum((y_pred==1)&(y_true==1)) / (np.sum(y_pred==1)+1e-8))
 
-        AUC = roc_auc_score(y_true, y_prob)
+        AUC  = roc_auc_score(y_true, y_prob)
         AUC1 = roc_auc_score(y_true, y1_prob)
         AUC2 = roc_auc_score(y_true, y2_prob)
         AUC3 = roc_auc_score(y_true, y3_prob)
+        AP   = average_precision_score(y_true, y_prob)
+
+        # Print confusion matrix
+        from sklearn.metrics import confusion_matrix
+        cm = confusion_matrix(y_true, y_pred)
+        print(f"\n===== CONFUSION MATRIX =====")
+        print(f"TN={cm[0,0]}  FP={cm[0,1]}")
+        print(f"FN={cm[1,0]}  TP={cm[1,1]}")
+        print(f"Accuracy={acc:.4f}  Precision={precision:.4f}  Recall={recall:.4f}")
+        print(f"F1={f1:.4f}  Specificity={specificity:.4f}")
+        print(f"AUROC={AUC:.4f}  AP={AP:.4f}\n")
 
         self.model.train()
         return {'eval/loss': total_loss / total_num, 'eval/f1': f1, 'eval/recall': recall,
                 'eval/specificity': specificity, 'eval/acc': acc,
+                'eval/precision': precision,
                 'eval/AUC': AUC, 'eval/AUC1': AUC1, 'eval/AUC2': AUC2, 'eval/AUC3': AUC3,
+                'eval/AP': AP,
                 'eval/best_thr': thresh, 'eval/y_true': y_true, 'eval/y_score': y_prob
                 }
 
@@ -365,6 +388,10 @@ def return_best_thr(y_true, y_score):
     f1s = f1s[~np.isnan(f1s)]
     best_thr = thrs[np.argmax(f1s)]
     return best_thr
+
+def return_val_thr(val_normal_scores, percentile=95.0):
+    """Leakage-free threshold from validation normal scores only."""
+    return float(np.percentile(val_normal_scores, percentile))
 
 
 def specificity_score(y_true, y_pred):

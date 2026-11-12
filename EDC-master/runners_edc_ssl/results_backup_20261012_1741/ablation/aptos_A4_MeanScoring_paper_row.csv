@@ -1,0 +1,2 @@
+Dataset,Variant,AUROC,AP,Accuracy,Precision,Recall,F1-score
+APTOS,A4_MeanScoring,0.7657,0.8844,0.5712,0.9399,0.4120,0.5711

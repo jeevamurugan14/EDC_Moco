@@ -1,218 +1,133 @@
-import torch
-
-from collections import Counter
-import torchvision
+import os
+import random
 import numpy as np
-from torchvision import transforms
+from torch.utils.data import Dataset
+from PIL import Image
 import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
-from .transforms import PixelShuffle, CutMix, MeanDropout
-import cv2
-from torch.utils.data import Dataset
-
-import json
-import os
-
-import random
-from .data_utils import get_onehot
-
-import gc
-import sys
-import copy
-from PIL import Image
-import pandas as pd
-import matplotlib.pyplot as plt
-
-mean, std = {}, {}
-mean['imagenet'] = [0.485, 0.456, 0.406]
-std['imagenet'] = [0.229, 0.224, 0.225]
-
-
-def accimage_loader(path):
-    import accimage
-    try:
-        return accimage.Image(path)
-    except IOError:
-        # Potentially a decoding problem, fall back to PIL.Image
-        return pil_loader(path)
 
 
 def pil_loader(path):
-    # open path as file to avoid ResourceWarning (https://github.com/python-pillow/Pillow/issues/835)
-    with open(path, 'rb') as f:
+    with open(path, "rb") as f:
         img = Image.open(f)
-        return img.convert('RGB')
-
-
-def default_loader(path):
-    from torchvision import get_image_backend
-    if get_image_backend() == 'accimage':
-        return accimage_loader(path)
-    else:
-        return pil_loader(path)
+        return img.convert("RGB")
 
 
 def divide255(image, **kwargs):
-    image = image / 255.0
-    return image.astype('float32')
+    return (image / 255.0).astype("float32")
 
 
-def get_transform(img_size, crop_size, train=True):
-    if train:
-        transform = A.Compose([
-            A.Resize(img_size, img_size),
-            A.CenterCrop(crop_size, crop_size),
-        ])
-        return transform
-    else:
-        transform = A.Compose([
-            A.Resize(img_size, img_size),
-            A.CenterCrop(crop_size, crop_size),
-        ])
-        return transform
+def get_transform(img_size=256, crop_size=256):
+    return A.Compose([
+        A.Resize(img_size, img_size),
+        A.CenterCrop(crop_size, crop_size),
+    ])
 
 
 class BasicDataset(Dataset):
-    """
-    BasicDataset returns a pair of image and labels (targets).
-    If targets are not given, BasicDataset returns None as the label.
-    This class supports strong augmentation for Fixmatch,
-    and return both weakly and strongly augmented images.
-    """
-
-    def __init__(self,
-                 img_paths,
-                 targets=None,
-                 transform=None,
-                 train=True,
-                 imagenet_norm=True,
-                 *args, **kwargs):
-        """
-        Args
-            data: x_data
-            targets: y_data (if not exist, None)
-            num_classes: number of label classes
-            transform: basic transformation of data
-            use_strong_transform: If True, this dataset returns both weakly and strongly augmented images.
-            strong_transform: list of transformation functions for strong augmentation
-            onehot: If True, label is converted into onehot vector.
-        """
-        super(BasicDataset, self).__init__()
+    def __init__(self, img_paths, targets=None, transform=None, imagenet_norm=True):
         self.img_paths = img_paths
-        self.targets = targets
+        self.targets   = targets
         self.transform = transform
-        self.train = train
-        self.totensor = A.Compose([
+        self.totensor  = A.Compose([
             A.Normalize() if imagenet_norm else A.Lambda(image=divide255),
-            ToTensorV2()])
-
-    def __getitem__(self, idx):
-        """
-        If strong augmentation is not used,
-            return weak_augment_image, target
-        else:
-            return weak_augment_image, strong_augment_image, target
-        """
-        # set idx-th target
-        if self.targets is None:
-            target = None
-        else:
-            target = self.targets[idx]
-
-        # set augmented images
-        img = default_loader(self.img_paths[idx])
-        img = np.array(img)
-        # filename = os.path.basename(self.img_paths[idx])
-        img_path = self.img_paths[idx]
-        filename = os.path.basename(img_path)
-
-        img_t = self.transform(image=img)['image']
-        img_n = self.totensor(image=img_t)['image']
-        #return idx, img_n, img_t, target, filename
-        return idx, img_n, img_t, target, img_path
-
+            ToTensorV2(),
+        ])
 
     def __len__(self):
         return len(self.img_paths)
 
+    def __getitem__(self, idx):
+        target   = self.targets[idx] if self.targets is not None else 0
+        img      = np.array(pil_loader(self.img_paths[idx]))
+        img_path = self.img_paths[idx]
 
-class AD_Dataset:
-    """
-    SSL_Dataset class gets dataset from torchvision.datasets,
-    separates labeled and unlabeled data,
-    and return BasicDataset: torch.utils.data.Dataset (see datasets.dataset.py)
-    """
+        if self.transform is not None:
+            img_t = self.transform(image=img)["image"]
+        else:
+            img_t = img
 
-    def __init__(self,
-                 name='chest-xray',
-                 img_size=256,
-                 crop_size=256,
-                 train=True,
-                 data_dir='../REFUGE',
-                 transform=None,
-                 train_samples_limit=10000,
-                 imagenet_norm=True
-                 ):
-        """
-        Args
-            alg: SSL algorithms
-            name: name of dataset in torchvision.datasets (cifar10, cifar100, svhn, stl10)
-            train: True means the dataset is training dataset (default=True)
-            num_classes: number of label classes
-            data_dir: path of directory, where data is downloaed or stored.
-        """
-        self.name = name
-        self.train = train
-        self.data_dir = data_dir
+        img_n = self.totensor(image=img_t)["image"]
+        return idx, img_n, img_t, target, img_path
+
+
+class AD_Dataset_WithVal:
+    def __init__(self, name="lungct", img_size=256, crop_size=256,
+                 train=True, data_dir="../data",
+                 val_fraction=0.2, seed=42,
+                 train_samples_limit=10000, imagenet_norm=True):
+        self.name        = name
+        self.train       = train
+        self.data_dir    = data_dir
+        self.val_fraction = val_fraction
+        self.seed        = seed
         self.train_samples_limit = train_samples_limit
         self.imagenet_norm = imagenet_norm
-        if transform is None:
-            self.transform = get_transform(img_size, crop_size, train)
-        else:
-            self.transform = transform
+        self.transform   = get_transform(img_size, crop_size)
+        self._split_done = False
 
-    def get_data(self):
-        """
-        get_data returns data path and targets (labels)
-        shape of img_paths: B
-        shape of labels: B,
-        """
-        if self.train:
-            train_path = os.path.join(self.data_dir, 'train', 'NORMAL')
-            norm_files = os.listdir(train_path)
-            if len(norm_files) > self.train_samples_limit:
-                norm_files = random.choices(norm_files, k=self.train_samples_limit)
-            img_paths = [os.path.join(train_path, file) for file in norm_files]
-            targets = np.zeros(len(img_paths))
-        else:
-            img_paths = []
-            targets = []
-            for sub_dir in os.listdir(os.path.join(self.data_dir, 'test')):
-                # Skip macOS hidden files
-                if sub_dir.startswith('.'):
-                    continue
-                files = os.listdir(os.path.join(self.data_dir, 'test', sub_dir))
-                paths = [os.path.join(self.data_dir, 'test', sub_dir, file) for file in files]
-                img_paths.extend(paths)
-                if sub_dir == 'NORMAL':
-                    targets.extend(list(np.zeros(len(paths))))
-                else:
-                    targets.extend(list(np.ones(len(paths))))
+    def _get_normal_train_paths(self):
+        train_path = os.path.join(self.data_dir, "train", "NORMAL")
+        files = [f for f in os.listdir(train_path) if not f.startswith(".")]
+        if len(files) > self.train_samples_limit:
+            rng = random.Random(self.seed)
+            files = rng.choices(files, k=self.train_samples_limit)
+        return [os.path.join(train_path, f) for f in files]
+
+    def _get_test_paths_and_labels(self):
+        img_paths, targets = [], []
+        test_root = os.path.join(self.data_dir, "test")
+        for sub_dir in os.listdir(test_root):
+            if sub_dir.startswith("."):
+                continue
+            sub_path = os.path.join(test_root, sub_dir)
+            if not os.path.isdir(sub_path):
+                continue
+            files = [f for f in os.listdir(sub_path) if not f.startswith(".")]
+            paths = [os.path.join(sub_path, f) for f in files]
+            img_paths.extend(paths)
+            label = 0 if sub_dir.upper() == "NORMAL" else 1
+            targets.extend([label] * len(paths))
         return img_paths, targets
 
-    def get_dset(self):
-        """
-        get_ssl_dset split training samples into labeled and unlabeled samples.
-        The labeled data is balanced samples over classes.
-        
-        Args:
-            strong_transform: list of strong transform (RandAugment in FixMatch)
-            onehot: If True, the target is converted into onehot vector.
-            
-        Returns:
-            BasicDataset (for labeled data), BasicDataset (for unlabeld data)
-        """
+    def _make_split(self):
+        all_paths = self._get_normal_train_paths()
+        rng = random.Random(self.seed)
+        rng.shuffle(all_paths)
+        n_val   = max(1, int(len(all_paths) * self.val_fraction))
+        n_train = len(all_paths) - n_val
+        self._train_paths = all_paths[:n_train]
+        self._val_paths   = all_paths[n_train:]
+        print(f"[Dataset Split] Normal train: {n_train}  |  Normal val: {n_val}")
+        self._split_done  = True
 
-        img_paths, targets = self.get_data()
-        dset = BasicDataset(img_paths, targets, transform=self.transform, imagenet_norm=self.imagenet_norm)
-        return dset
+    def get_train_dset(self):
+        if not self._split_done:
+            self._make_split()
+        targets = np.zeros(len(self._train_paths))
+        return BasicDataset(self._train_paths, targets,
+                            transform=self.transform,
+                            imagenet_norm=self.imagenet_norm)
+
+    def get_val_dset(self):
+        if not self._split_done:
+            self._make_split()
+        targets = np.zeros(len(self._val_paths))
+        return BasicDataset(self._val_paths, targets,
+                            transform=self.transform,
+                            imagenet_norm=self.imagenet_norm)
+
+    def get_eval_dset(self):
+        img_paths, targets = self._get_test_paths_and_labels()
+        targets = np.array(targets)
+        print(f"[Eval Set] Normal: {(targets==0).sum()}  "
+              f"Abnormal: {(targets==1).sum()}  Total: {len(targets)}")
+        return BasicDataset(img_paths, targets,
+                            transform=self.transform,
+                            imagenet_norm=self.imagenet_norm)
+
+    def get_dset(self):
+        if self.train:
+            return self.get_train_dset()
+        else:
+            return self.get_eval_dset()

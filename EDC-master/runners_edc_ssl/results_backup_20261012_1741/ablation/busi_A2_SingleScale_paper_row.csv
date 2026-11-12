@@ -1,0 +1,2 @@
+Dataset,Variant,AUROC,AP,Accuracy,Precision,Recall,F1-score
+BUSI,A2_SingleScale,0.5798,0.9087,0.3390,0.9014,0.2825,0.4179

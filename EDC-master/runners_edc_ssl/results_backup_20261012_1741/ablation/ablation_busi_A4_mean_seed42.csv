@@ -1,0 +1,2 @@
+Variant,Dataset,Seed,AUROC,AP,Accuracy,Precision,Recall,F1,Specificity
+A4_MeanScoring,BUSI,42,0.5138,0.8900,0.2827,0.8846,0.2190,0.3511,0.7778

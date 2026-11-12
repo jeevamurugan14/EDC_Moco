@@ -1,0 +1,2 @@
+Baseline,Dataset,Seed,AUROC,AP,Accuracy,Precision,Recall,F1,Specificity
+PatchCore,LungCT,42,0.9306,0.9731,0.9643,0.9811,0.9792,0.9801,0.8333

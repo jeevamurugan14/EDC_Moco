@@ -1,0 +1,2 @@
+Variant,Dataset,Seed,AUROC,AP,Accuracy,Precision,Recall,F1,Specificity
+A5_Proposed,LUNGCT,42,0.8959,0.9688,0.9830,0.9814,1.0000,0.9906,0.8333
